@@ -5,9 +5,9 @@
 ## 目錄
 
 1. [專案概述](#1-專案概述)
-2. [一：手冊中 BSP / ISR 相關章節](#2-一手冊中-bsp--isr-相關章節)
-3. [二：UG585 中與中斷相關的暫存器](#3-二ug585-中與中斷相關的暫存器)
-4. [三：實作成果](#4-三實作成果)
+2. [作業一：手冊中 BSP / ISR 相關章節](#2-作業一手冊中-bsp--isr-相關章節)
+3. [作業二：UG585 中與中斷相關的暫存器](#3-作業二ug585-中與中斷相關的暫存器)
+4. [作業三：實作成果](#4-作業三實作成果)
 5. [實驗結果與驗證](#5-實驗結果與驗證)
 6. [問題與心得](#6-問題與心得)
 7. [如何重現](#7-如何重現)
@@ -20,7 +20,8 @@
 | 項目 | 內容 |
 | --- | --- |
 | **開發板** | E-Elements EGO-XZ7（Zynq-7020，XC7Z020-1CLG484，雙核 Cortex-A9） |
-| **工具版本** | Vivado 2018.2 / 2018.3、Xilinx SDK 2018.2 |
+| **工具版本** | Vivado 2018.3（專案檔 `project_1.xpr`）、Xilinx SDK 2018.3 |
+| **目標晶片** | `xc7z020clg484-1` |
 | **程式語言** | C（Bare-metal / standalone BSP） |
 | **作業目標** | ① 查找 Zynq-7020 手冊中 BSP / ISR 相關章節 <br> ② 查找 UG585 中與中斷相關且具實體位址的暫存器（IRQ、Pending、Mask） <br> ③ 實作：(a) 點亮 LED（C → FPGA → LED）(b) 按按鈕觸發中斷改變 LED 狀態（Driver + ISR） |
 
@@ -61,7 +62,7 @@
 
 ---
 
-## 3. 二：UG585 中與中斷相關的暫存器
+## 3. 作業二：UG585 中與中斷相關的暫存器
 
 ### 3.1 中斷傳遞路徑
 
@@ -100,7 +101,7 @@ GIC 分為兩大區塊：
 
 ---
 
-## 4. 三：實作成果
+## 4. 作業三：實作成果
 
 ### 4.1 硬體架構（Vivado Block Design）
 
@@ -109,6 +110,8 @@ GIC 分為兩大區塊：
 | `processing_system7_0` | 啟用 `M_AXI_GP0`；啟用 `IRQ_F2P[0:0]` | CPU 存取 PL 周邊；PL 中斷入口 |
 | `axi_gpio_0` | 8-bit、**Outputs** | 連接 8 顆板載 LED |
 | `axi_gpio_1` | 1-bit、**Inputs**、啟用 **Enable Interrupt** | 接收按鈕；`ip2intc_irpt` 接至 `IRQ_F2P[0]` |
+| `axi_timer_0` | AXI Timer | 硬體計時器（提供跑馬燈的時間基準） |
+| `axi_interconnect`（`xbar`）、`proc_sys_reset_0` | 預設 | AXI 互連與系統重置 |
 
 **位址分配（Address Editor）：**
 
@@ -116,6 +119,8 @@ GIC 分為兩大區塊：
 | --- | --- | --- |
 | `axi_gpio_0`（LED） | `0x4120_0000` | 64K |
 | `axi_gpio_1`（按鈕） | `0x4121_0000` | 64K |
+
+腳位約束位於 `pin.xdc`（LED 與按鈕對應至開發板 PL 腳位）。專案另含自訂 IP 目錄 `ip_repo/LEDswitching_1.0`。
 
 > 📷 *Block Design 截圖：* `docs/block_design.png`
 
@@ -187,21 +192,12 @@ void btn_isr(void *ref)
 
 ## 7. 如何重現
 
-1. 以 Vivado 2018.2 開啟專案，確認 Block Design 與 Address Editor 如 §4.1。
+1. 以 **Vivado 2018.3** 開啟 `project_1.xpr`（若 Vivado 版本不同，請先 Upgrade IP），確認 Block Design 與 Address Editor 如 §4.1。
 2. 產生 Bitstream，**File → Export → Export Hardware（勾選 Include bitstream）**，再 **Launch SDK**。
 3. 在 SDK 建立 Application Project（standalone BSP），將 `sdk/main.c` 加入並編譯。
 4. 連接開發板，**Xilinx → Program FPGA**，再 **Run As → Launch on Hardware (System Debugger)**。
 
-### 專案結構
 
-```
-.
-├── README.md
-├── vivado/          # Block Design / 約束檔 / 專案腳本
-├── sdk/
-│   └── main.c       # LED 跑馬燈 + 按鈕 ISR
-└── docs/            # 截圖與 Demo
-```
 
 ---
 
